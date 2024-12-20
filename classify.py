@@ -122,7 +122,7 @@ def main():
                         result = match.group(1)
                     else:
                         result = "unknown"
-                        console.log(f"[yellow]Warning: Unexpected response for comment {comment_id} in {json_file.name}[/yellow]")
+                        console.log(f"[yellow]Warning: Unexpected response for comment {comment_id} in {json_file.name}: {answer}[/yellow]")
                 else:
                     # Dry run: no API call, just show that we would have processed
                     result = "(dry-run)"
@@ -131,7 +131,7 @@ def main():
                 progress.update(
                     task,
                     advance=1,
-                    description=f"Last: {json_file.name}/{comment_id} -> {result}"
+                    description=f"Last: {json_file.name}/{comment_id} -> {answer}"
                 )
 
                 if not args.dry_run and result in ["for", "against"]:
