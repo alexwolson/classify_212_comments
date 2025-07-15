@@ -153,7 +153,7 @@ Examples:
     if args.dry_run:
         console.log(f"[blue]Total estimated tokens required: {total_tokens}[/blue]")
     else:
-        console.log(f"[green]Results written to {args.output_csv}[\green]")
+        console.log(f"[green]Results written to {args.output_csv}[/green]")
 
 if __name__ == "__main__":
     main()
