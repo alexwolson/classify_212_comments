@@ -3,7 +3,6 @@ import json
 import re
 from collections import Counter
 
-import tiktoken
 import argparse
 import sys
 import csv
@@ -17,9 +16,17 @@ from docx import Document
 from bs4 import BeautifulSoup
 from striprtf.striprtf import rtf_to_text
 
-def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
-    encoding = tiktoken.encoding_for_model(model)
-    return len(encoding.encode(text))
+def count_tokens(text: str, model: str = "gemini-1.5-flash") -> int:
+    """Count tokens for Gemini models using the Google Generative AI library."""
+    try:
+        import google.generativeai as genai
+        # For token counting, we can use the count_tokens method
+        # This is a rough estimate for dry runs when client isn't configured
+        model_instance = genai.GenerativeModel(model)
+        return model_instance.count_tokens(text).total_tokens
+    except Exception:
+        # Fallback: estimate tokens as characters / 3 (rough estimate)
+        return len(text) // 3
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
     """Extract text from a PDF file."""
@@ -153,7 +160,7 @@ def get_supported_extensions():
     """Return a list of supported file extensions."""
     return ['.pdf', '.txt', '.text', '.html', '.htm', '.docx', '.rtf']
 
-def chunk_text(text: str, max_tokens: int, model: str = "gpt-4o-mini") -> list[str]:
+def chunk_text(text: str, max_tokens: int, model: str = "gemini-1.5-flash") -> list[str]:
     """Split text into chunks that fit within the token limit."""
     # Conservative approach: estimate 4 characters per token
     # This is a rough estimate since we can't count tokens without network access
@@ -211,22 +218,25 @@ def main():
 
     parser = argparse.ArgumentParser(description="Process comments to detect references to Strong Mayor Powers.")
     parser.add_argument("input_path", type=str, help="File containing JSON data with comments OR directory containing document files (PDF, TXT, HTML, DOCX, RTF) with comments.")
-    parser.add_argument("--dry-run", action="store_true", help="If provided, only calculate total tokens without calling the OpenAI API.")
-    parser.add_argument("--openai-api-key", type=str, default=None, help="OpenAI API key. If not set, must be set as environment variable.")
+    parser.add_argument("--dry-run", action="store_true", help="If provided, only calculate total tokens without calling the Google Gemini API.")
+    parser.add_argument("--google-api-key", type=str, default=None, help="Google API key for Gemini. If not set, must be set as environment variable.")
     parser.add_argument("--output-csv", type=str, default="results.csv", help="Output CSV file to store results.")
-    parser.add_argument("--model", type=str, default="gpt-4o-mini", help="Model name to use for the OpenAI API calls.")
-    parser.add_argument("--max-tokens", type=int, default=120000, help="Maximum tokens per request (for chunking large PDFs).")
+    parser.add_argument("--model", type=str, default="gemini-1.5-flash", help="Model name to use for the Google Gemini API calls.")
+    parser.add_argument("--max-tokens", type=int, default=1000000, help="Maximum tokens per request (for chunking large documents).")
     args = parser.parse_args()
 
-    # Set API key
-    api_key = args.openai_api_key or os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        console.log("[red]Error: No OpenAI API key provided and not found in environment variables.[/red]")
-        sys.exit(1)
+    # Set API key and initialize client only if not doing a dry run
+    if not args.dry_run:
+        api_key = args.google_api_key or os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            console.log("[red]Error: No Google API key provided and not found in environment variables.[/red]")
+            console.log("[red]Set GOOGLE_API_KEY environment variable or use --google-api-key option.[/red]")
+            sys.exit(1)
 
-    # Lazy import of openai since user had previous code
-    from openai import OpenAI
-    client = OpenAI(api_key=api_key)
+        # Import and configure Google Generative AI
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(args.model)
 
     input_path = Path(args.input_path)
     if not input_path.exists():
@@ -365,16 +375,11 @@ Determine if the comment contains any reference to Strong Mayor Powers and class
                         chunk_prompt = construct_full_prompt(chunk, system_prompt)
                         
                         if not args.dry_run:
-                            response = client.chat.completions.create(
-                                model=args.model,
-                                messages=[
-                                    {"role": "system", "content": system_prompt},
-                                    {"role": "user", "content": chunk_prompt}
-                                ],
-                                temperature=0
-                            )
+                            # Construct the full prompt for Gemini
+                            full_chunk_prompt = construct_full_prompt(chunk, system_prompt)
+                            response = model.generate_content(full_chunk_prompt)
 
-                            answer = response.choices[0].message.content.strip().lower()
+                            answer = response.text.strip().lower()
                             match = re.search(r"\b(present|absent)\b", answer)
                             if match:
                                 chunk_stance = match.group(1)
@@ -396,16 +401,9 @@ Determine if the comment contains any reference to Strong Mayor Powers and class
                 else:
                     # Single request for normal-sized comments
                     if not args.dry_run:
-                        response = client.chat.completions.create(
-                            model=args.model,
-                            messages=[
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": full_prompt}
-                            ],
-                            temperature=0
-                        )
+                        response = model.generate_content(full_prompt)
 
-                        answer = response.choices[0].message.content.strip().lower()
+                        answer = response.text.strip().lower()
                         match = re.search(r"\b(present|absent)\b", answer)
                         if match:
                             result = match.group(1)

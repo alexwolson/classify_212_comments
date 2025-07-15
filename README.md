@@ -1,6 +1,6 @@
 # Strong Mayor Powers Detection Tool
 
-This project provides a command-line tool to classify comments for the presence or absence of references to "Strong Mayor Powers" within public consultation documents. The script uses the OpenAI API to evaluate comments and return a machine-readable label indicating whether each comment contains references to Strong Mayor Powers concepts.
+This project provides a command-line tool to classify comments for the presence or absence of references to "Strong Mayor Powers" within public consultation documents. The script uses the Google Gemini API to evaluate comments and return a machine-readable label indicating whether each comment contains references to Strong Mayor Powers concepts.
 
 ## Purpose
 
@@ -20,14 +20,13 @@ Strong Mayor Powers refer to enhanced mayoral authorities introduced in Ontario 
 ## Requirements
 
 - Python 3.8+
-- `openai` Python library (version 1.0.0+)
-- `tiktoken` for token counting
+- `google-generativeai` Python library for Google Gemini API
 - `rich` for enhanced console output
 - `pdfplumber` for PDF text extraction
 - `python-docx` for Word document (.docx) text extraction 
 - `beautifulsoup4` for HTML text extraction
 - `striprtf` for RTF text extraction
-- A valid OpenAI API key
+- A valid Google API key for Gemini
 
 ## Installation
 
@@ -39,15 +38,15 @@ Strong Mayor Powers refer to enhanced mayoral authorities introduced in Ontario 
    
 2. **Install required packages**:
     ```bash
-    pip install openai tiktoken rich pdfplumber python-docx beautifulsoup4 striprtf
+    pip install google-generativeai rich pdfplumber python-docx beautifulsoup4 striprtf
     ```
 
-3. **Set the OpenAI API key**:
+3. **Set the Google API key**:
     - As an environment variable:
       ```bash
-      export OPENAI_API_KEY="your-api-key-here"
+      export GOOGLE_API_KEY="your-api-key-here"
       ```
-    - Or use the `--openai-api-key` argument when running the script.
+    - Or use the `--google-api-key` argument when running the script.
 
 ## Usage
 
@@ -89,11 +88,11 @@ python classify.py [input_path] [options]
      - **RTF files** (`.rtf`): Rich text format with formatting removed
 
 **Optional Arguments:**
-- `--dry-run`: Estimate token usage without making OpenAI API calls.
-- `--openai-api-key`: Provide the API key directly. If not set, the script uses the `OPENAI_API_KEY` environment variable.
+- `--dry-run`: Estimate token usage without making Google Gemini API calls.
+- `--google-api-key`: Provide the API key directly. If not set, the script uses the `GOOGLE_API_KEY` environment variable.
 - `--output-csv`: Specify the output CSV file name. Default is `results.csv`.
-- `--model`: Specify the model name. Default is `gpt-4o-mini`. Adjust this to a model you have access to, such as `gpt-4`.
-- `--max-tokens`: Maximum tokens per request for chunking large PDFs. Default is 120,000 tokens.
+- `--model`: Specify the model name. Default is `gemini-1.5-flash`. You can also use `gemini-1.5-pro` for potentially better accuracy.
+- `--max-tokens`: Maximum tokens per request for chunking large documents. Default is 1,000,000 tokens.
 
 **Large Document Handling:**
 When processing document files that contain more text than the model's context window can handle, the script automatically:
@@ -104,10 +103,10 @@ When processing document files that contain more text than the model's context w
 **Example Runs:**
 ```bash
 # Process JSON file to detect Strong Mayor Powers references
-python classify.py comments.json --openai-api-key YOUR_KEY --model gpt-4
+python classify.py comments.json --google-api-key YOUR_KEY --model gemini-1.5-pro
 
 # Process document directory (supports PDF, TXT, HTML, DOCX, RTF)
-python classify.py ./document_comments --openai-api-key YOUR_KEY --output-csv strong_mayor_results.csv
+python classify.py ./document_comments --google-api-key YOUR_KEY --output-csv strong_mayor_results.csv
 
 # Dry run to estimate costs for document directory
 python classify.py ./document_comments --dry-run
