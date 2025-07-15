@@ -1,6 +1,7 @@
 .idea/
 *.json
 test_*.csv
+test_docs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
