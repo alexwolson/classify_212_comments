@@ -17,16 +17,10 @@ from bs4 import BeautifulSoup
 from striprtf.striprtf import rtf_to_text
 
 def count_tokens(text: str, model: str = "gemini-1.5-flash") -> int:
-    """Count tokens for Gemini models using the Google Generative AI library."""
-    try:
-        import google.generativeai as genai
-        # For token counting, we can use the count_tokens method
-        # This is a rough estimate for dry runs when client isn't configured
-        model_instance = genai.GenerativeModel(model)
-        return model_instance.count_tokens(text).total_tokens
-    except Exception:
-        # Fallback: estimate tokens as characters / 3 (rough estimate)
-        return len(text) // 3
+    """Count tokens for Gemini models using a simple estimation for dry runs."""
+    # For dry runs, use a simple estimation to avoid API calls
+    # Gemini models typically have ~3-4 characters per token
+    return len(text) // 3
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
     """Extract text from a PDF file."""
