@@ -23,7 +23,10 @@ Manually classifying these comments (i.e., determining whether each comment supp
 - `openai` Python library (version 1.0.0+)
 - `tiktoken` for token counting
 - `rich` for enhanced console output
-- `pdfplumber` for PDF text extraction (new)
+- `pdfplumber` for PDF text extraction
+- `python-docx` for Word document (.docx) text extraction 
+- `beautifulsoup4` for HTML text extraction
+- `striprtf` for RTF text extraction
 - A valid OpenAI API key
 
 ## Installation
@@ -36,7 +39,7 @@ Manually classifying these comments (i.e., determining whether each comment supp
    
 2. **Install required packages**:
     ```bash
-    pip install openai tiktoken rich pdfplumber
+    pip install openai tiktoken rich pdfplumber python-docx beautifulsoup4 striprtf
     ```
 
 3. **Set the OpenAI API key**:
@@ -56,7 +59,7 @@ python classify.py [input_path] [options]
 **Arguments:**
 - **input_path** (required): Either:
   - A JSON file containing comments in the format described below, OR
-  - A directory containing PDF files (each PDF represents one comment)
+  - A directory containing document files (PDF, TXT, HTML, DOCX, RTF) with comments
 
 **Input Formats:**
 
@@ -74,10 +77,16 @@ python classify.py [input_path] [options]
     ]
     ```
 
-2. **PDF Directory Format**: A directory containing PDF files where:
-   - Each PDF file contains the text of one comment
-   - The filename (without .pdf extension) is used as the comment ID
-   - Text is automatically extracted from the PDF
+2. **Document Directory Format**: A directory containing document files where:
+   - Each document file contains the text of one comment
+   - The filename (without extension) is used as the comment ID
+   - Text is automatically extracted from the document
+   - **Supported formats:**
+     - **PDF files** (`.pdf`): Text extracted using pdfplumber
+     - **Text files** (`.txt`, `.text`): Plain text files
+     - **HTML files** (`.html`, `.htm`): Text extracted with HTML tags removed
+     - **Word documents** (`.docx`): Text extracted from paragraphs and tables
+     - **RTF files** (`.rtf`): Rich text format with formatting removed
 
 **Optional Arguments:**
 - `--dry-run`: Estimate token usage without making OpenAI API calls.
@@ -86,8 +95,8 @@ python classify.py [input_path] [options]
 - `--model`: Specify the model name. Default is `gpt-4o-mini`. Adjust this to a model you have access to, such as `gpt-4`.
 - `--max-tokens`: Maximum tokens per request for chunking large PDFs. Default is 120,000 tokens.
 
-**Large PDF Handling:**
-When processing PDF files that contain more text than the model's context window can handle, the script automatically:
+**Large Document Handling:**
+When processing document files that contain more text than the model's context window can handle, the script automatically:
 1. Chunks the text into smaller pieces that fit within the token limit
 2. Processes each chunk separately to get individual classifications
 3. Uses majority voting to determine the final stance for the entire comment
@@ -97,11 +106,11 @@ When processing PDF files that contain more text than the model's context window
 # Process JSON file
 python classify.py comments.json --openai-api-key YOUR_KEY --model gpt-4
 
-# Process PDF directory
-python classify.py ./pdf_comments --openai-api-key YOUR_KEY --output-csv pdf_results.csv
+# Process document directory (supports PDF, TXT, HTML, DOCX, RTF)
+python classify.py ./document_comments --openai-api-key YOUR_KEY --output-csv document_results.csv
 
-# Dry run to estimate costs
-python classify.py ./pdf_comments --dry-run
+# Dry run to estimate costs for document directory
+python classify.py ./document_comments --dry-run
 ```
 
 A separate validation script, `validate.py`, is provided to help verify the accuracy of the model's classifications. This script allows a human reviewer to randomly sample a set of comments and provide their own "for" or "against" judgments, then compare these judgments against the model’s predictions to measure agreement.

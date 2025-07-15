@@ -142,6 +142,8 @@ def extract_text_from_file(file_path: Path) -> str:
         return extract_text_from_html(file_path)
     elif file_extension == '.docx':
         return extract_text_from_docx(file_path)
+    elif file_extension == '.doc':
+        raise ValueError(f"Legacy .doc files are not supported. Please convert {file_path.name} to .docx format.")
     elif file_extension == '.rtf':
         return extract_text_from_rtf(file_path)
     else:
