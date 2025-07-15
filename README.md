@@ -112,6 +112,25 @@ python classify.py ./document_comments --google-api-key YOUR_KEY --output-csv st
 python classify.py ./document_comments --dry-run
 ```
 
+## Demo Jupyter Notebook
+
+A comprehensive demo Jupyter notebook (`demo.ipynb`) is provided to demonstrate the tool's functionality step-by-step using a single PDF document. The notebook includes:
+
+- Interactive walkthrough of the classification process
+- Sample PDF document creation and analysis
+- Dry-run mode demonstration for cost estimation
+- Multiple file format support examples
+- Results visualization and interpretation
+- Comprehensive setup and usage guidance
+
+**To run the demo:**
+1. Install Jupyter: `pip install jupyter pandas matplotlib`
+2. Start Jupyter: `jupyter notebook` or `jupyter lab`
+3. Open `demo.ipynb` in your browser
+4. Follow the step-by-step instructions
+
+The demo works with or without a Google API key, providing expected results when no key is available.
+
 A separate validation script, `validate.py`, is provided to help verify the accuracy of the model's classifications. This script allows a human reviewer to randomly sample a set of comments and provide their own "for" or "against" judgments, then compare these judgments against the model’s predictions to measure agreement.
 
 ### How It Works
