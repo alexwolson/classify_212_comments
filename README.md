@@ -1,6 +1,8 @@
 # Strong Mayor Powers Detection Tool
 
-This project provides a command-line tool to classify comments for the presence or absence of references to "Strong Mayor Powers" within public consultation documents. The script uses the Google Gemini API to evaluate comments and return a machine-readable label indicating whether each comment contains references to Strong Mayor Powers concepts.
+This project provides a command-line tool to classify documents for the presence or absence of references to "Strong Mayor Powers" within public consultation documents. The script uses the Google Gemini API to evaluate documents and return a machine-readable label indicating whether each document contains references to Strong Mayor Powers concepts.
+
+**🚀 Now using the new Google GenAI API with direct document upload - no more text extraction dependencies!**
 
 ## Purpose
 
@@ -8,25 +10,23 @@ Strong Mayor Powers refer to enhanced mayoral authorities introduced in Ontario 
 
 ## Methodology
 
-1. **Contextual Analysis**:  
-   Each comment is analyzed to detect explicit or implicit references to Strong Mayor Powers, enhanced mayoral authorities, mayor override powers, or related municipal governance concepts.
+1. **Direct Document Processing**:  
+   Documents are uploaded directly to the Gemini API using the new Google GenAI library. No text extraction is performed locally - Google's models handle document processing internally.
 
 2. **Machine-Readable Results**:  
-   The model returns "present" if the comment contains references to Strong Mayor Powers and "absent" if no such references are found. This makes it easy to tally results or conduct further quantitative analysis on public opinion regarding mayoral governance changes.
+   The model returns "present" if the document contains references to Strong Mayor Powers and "absent" if no such references are found. Results use structured response schemas for reliability.
 
-3. **Token Counting (Dry Run)**:  
+3. **Token Estimation (Dry Run)**:  
    Before running a full classification, you can use the `--dry-run` option to estimate the total token usage (and therefore costs) without making API calls.
 
 ## Requirements
 
 - Python 3.8+
-- `google-generativeai` Python library for Google Gemini API
+- `google-genai` Python library for Google Gemini API (new API)
 - `rich` for enhanced console output
-- `pdfplumber` for PDF text extraction
-- `python-docx` for Word document (.docx) text extraction 
-- `beautifulsoup4` for HTML text extraction
-- `striprtf` for RTF text extraction
-- A valid Google API key for Gemini
+- A valid Gemini API key
+
+**Note**: The tool no longer requires text extraction libraries (pdfplumber, python-docx, etc.) as documents are processed directly by the Gemini API.
 
 ## Installation
 
@@ -38,99 +38,74 @@ Strong Mayor Powers refer to enhanced mayoral authorities introduced in Ontario 
    
 2. **Install required packages**:
     ```bash
-    pip install google-generativeai rich pdfplumber python-docx beautifulsoup4 striprtf
+    pip install google-genai rich
     ```
 
-3. **Set the Google API key**:
+3. **Set the Gemini API key**:
     - As an environment variable:
       ```bash
-      export GOOGLE_API_KEY="your-api-key-here"
+      export GEMINI_API_KEY="your-api-key-here"
       ```
-    - Or use the `--google-api-key` argument when running the script.
+    - Or use the `--gemini-api-key` argument when running the script.
 
 ## Usage
 
 **Command:**
 ```bash
-python classify.py [input_path] [options]
+python classify.py [input_directory] [options]
 ```
 
 **Arguments:**
-- **input_path** (required): Either:
-  - A JSON file containing comments in the format described below, OR
-  - A directory containing document files (PDF, TXT, HTML, DOCX, RTF) with comments
+- **input_directory** (required): A directory containing document files (PDF, TXT, HTML, DOCX, RTF) with comments
 
-**Input Formats:**
+**Input Format:**
 
-1. **JSON File Format**: Each file should have a structure like:
-    ```json
-    [
-      {
-        "comment_id": "103658",
-        "comment": "I believe removing bike lanes is a terrible idea..."
-      },
-      {
-        "comment_id": "103661", 
-        "comment": "This bill will help build highways faster and reduce congestion..."
-      }
-    ]
-    ```
-
-2. **Document Directory Format**: A directory containing document files where:
-   - Each document file contains the text of one comment
-   - The filename (without extension) is used as the comment ID
-   - Text is automatically extracted from the document
-   - **Supported formats:**
-     - **PDF files** (`.pdf`): Text extracted using pdfplumber
-     - **Text files** (`.txt`, `.text`): Plain text files
-     - **HTML files** (`.html`, `.htm`): Text extracted with HTML tags removed
-     - **Word documents** (`.docx`): Text extracted from paragraphs and tables
-     - **RTF files** (`.rtf`): Rich text format with formatting removed
+**Document Directory Format**: A directory containing document files where:
+  - Each document file contains the content of one comment
+  - The filename (without extension) is used as the comment ID
+  - Documents are processed directly by the Gemini API (no local text extraction)
+  - **Supported formats:**
+    - **PDF files** (`.pdf`): Processed directly by Gemini
+    - **Text files** (`.txt`, `.text`): Plain text files
+    - **HTML files** (`.html`, `.htm`): Processed directly with tag handling
+    - **Word documents** (`.docx`): Processed directly by Gemini
+    - **RTF files** (`.rtf`): Rich text format processed directly
 
 **Optional Arguments:**
 - `--dry-run`: Estimate token usage without making Google Gemini API calls.
-- `--google-api-key`: Provide the API key directly. If not set, the script uses the `GOOGLE_API_KEY` environment variable.
+- `--gemini-api-key`: Provide the API key directly. If not set, the script uses the `GEMINI_API_KEY` environment variable.
 - `--output-csv`: Specify the output CSV file name. Default is `results.csv`.
-- `--model`: Specify the model name. Default is `gemini-1.5-flash`. You can also use `gemini-1.5-pro` for potentially better accuracy.
-- `--max-tokens`: Maximum tokens per request for chunking large documents. Default is 1,000,000 tokens.
+- `--model`: Specify the model name. Default is `gemini-2.5-flash`. You can also use `gemini-2.5-pro` for potentially better accuracy.
 
 **Large Document Handling:**
-When processing document files that contain more text than the model's context window can handle, the script automatically:
-1. Chunks the text into smaller pieces that fit within the token limit
-2. Processes each chunk separately to get individual classifications
-3. Uses majority voting to determine the final stance for the entire comment
+The new Gemini API can handle documents up to 1 million tokens directly. Very large documents are processed as a single unit without chunking, providing more coherent analysis.
 
 **Example Runs:**
 ```bash
-# Process JSON file to detect Strong Mayor Powers references
-python classify.py comments.json --google-api-key YOUR_KEY --model gemini-1.5-pro
+# Process document directory to detect Strong Mayor Powers references
+python classify.py ./document_comments --gemini-api-key YOUR_KEY --model gemini-2.5-pro
 
-# Process document directory (supports PDF, TXT, HTML, DOCX, RTF)
-python classify.py ./document_comments --google-api-key YOUR_KEY --output-csv strong_mayor_results.csv
+# Process document directory with custom output file
+python classify.py ./document_comments --gemini-api-key YOUR_KEY --output-csv strong_mayor_results.csv
 
 # Dry run to estimate costs for document directory
 python classify.py ./document_comments --dry-run
 ```
 
-A separate validation script, `validate.py`, is provided to help verify the accuracy of the model's classifications. This script allows a human reviewer to randomly sample a set of comments and provide their own "for" or "against" judgments, then compare these judgments against the model’s predictions to measure agreement.
+## Key Changes in New Version
 
-### How It Works
+**🚀 Major API Update**: The tool now uses the new Google GenAI API with significant improvements:
 
-1. **Random Sampling of Comments**:
-   The script reads all comments from the specified directory (in `.json` files) and looks up their corresponding Strong Mayor Powers classifications from the `results.csv` file.
+- **Direct Document Upload**: Documents are sent directly to Gemini without local text extraction
+- **Simplified Dependencies**: No longer requires pdfplumber, python-docx, beautifulsoup4, striprtf
+- **Better Document Processing**: Google's models handle text extraction more reliably
+- **Structured Responses**: Uses enum-based response schemas for better consistency
+- **Updated Model**: Now uses `gemini-2.5-flash` with 1 million token context window
+- **Environment Variable**: Changed from `GOOGLE_API_KEY` to `GEMINI_API_KEY`
+- **Input Simplification**: Only supports directory input (JSON input removed)
 
-2. **User Input**:
-   It then randomly selects a specified number of these comments and presents them, one by one, to the user via the command line. The user is asked to classify each comment as "present" or "absent" for Strong Mayor Powers references.
-
-3. **Comparison and Report**:
-   Once the user has classified all the sampled comments, the script compares these user-provided classifications against the model's original predictions. It then reports a percentage agreement (i.e., how often the user and the model agreed).
-
-4. **CSV Output**:
-   The user's classifications and the agreement results are saved to a CSV file for later review.
-
-### Usage
-
-**Command:**
-```bash
-python validate.py [directory] [results_csv] [num_samples] [options]
-```
+**Migration Guide**:
+- Update environment variable: `GOOGLE_API_KEY` → `GEMINI_API_KEY`
+- Update dependencies: Remove text extraction libraries, install `google-genai`
+- Convert JSON input to directory of document files
+- Update command arguments: `--google-api-key` → `--gemini-api-key`
