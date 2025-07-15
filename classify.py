@@ -12,6 +12,11 @@ from pathlib import Path
 from rich.console import Console
 from rich.progress import Progress
 
+# Additional imports for new file types
+from docx import Document
+from bs4 import BeautifulSoup
+from striprtf.striprtf import rtf_to_text
+
 def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
     encoding = tiktoken.encoding_for_model(model)
     return len(encoding.encode(text))
@@ -28,6 +33,125 @@ def extract_text_from_pdf(pdf_path: Path) -> str:
             return full_text.strip()
     except Exception as e:
         raise ValueError(f"Error extracting text from {pdf_path}: {e}")
+
+def extract_text_from_txt(txt_path: Path) -> str:
+    """Extract text from a text file."""
+    try:
+        with open(txt_path, 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    except UnicodeDecodeError:
+        # Try with different encoding if UTF-8 fails
+        try:
+            with open(txt_path, 'r', encoding='latin-1') as f:
+                return f.read().strip()
+        except Exception as e:
+            raise ValueError(f"Error reading text from {txt_path}: {e}")
+    except Exception as e:
+        raise ValueError(f"Error reading text from {txt_path}: {e}")
+
+def extract_text_from_html(html_path: Path) -> str:
+    """Extract text from an HTML file."""
+    try:
+        with open(html_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Parse HTML and extract text
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        
+        # Get text and clean it up
+        text = soup.get_text()
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+        
+        return text.strip()
+    except UnicodeDecodeError:
+        # Try with different encoding if UTF-8 fails
+        try:
+            with open(html_path, 'r', encoding='latin-1') as f:
+                html_content = f.read()
+            soup = BeautifulSoup(html_content, 'html.parser')
+            for script in soup(["script", "style"]):
+                script.decompose()
+            text = soup.get_text()
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            text = '\n'.join(chunk for chunk in chunks if chunk)
+            return text.strip()
+        except Exception as e:
+            raise ValueError(f"Error extracting text from {html_path}: {e}")
+    except Exception as e:
+        raise ValueError(f"Error extracting text from {html_path}: {e}")
+
+def extract_text_from_docx(docx_path: Path) -> str:
+    """Extract text from a DOCX file."""
+    try:
+        doc = Document(docx_path)
+        full_text = []
+        
+        # Extract text from paragraphs
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                full_text.append(paragraph.text)
+        
+        # Extract text from tables
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    if cell.text.strip():
+                        full_text.append(cell.text)
+        
+        return '\n'.join(full_text).strip()
+    except Exception as e:
+        raise ValueError(f"Error extracting text from {docx_path}: {e}")
+
+def extract_text_from_rtf(rtf_path: Path) -> str:
+    """Extract text from an RTF file."""
+    try:
+        with open(rtf_path, 'r', encoding='utf-8') as f:
+            rtf_content = f.read()
+        
+        # Convert RTF to plain text
+        text = rtf_to_text(rtf_content)
+        return text.strip()
+    except UnicodeDecodeError:
+        # Try with different encoding if UTF-8 fails
+        try:
+            with open(rtf_path, 'r', encoding='latin-1') as f:
+                rtf_content = f.read()
+            text = rtf_to_text(rtf_content)
+            return text.strip()
+        except Exception as e:
+            raise ValueError(f"Error extracting text from {rtf_path}: {e}")
+    except Exception as e:
+        raise ValueError(f"Error extracting text from {rtf_path}: {e}")
+
+def extract_text_from_file(file_path: Path) -> str:
+    """Extract text from any supported file type."""
+    file_extension = file_path.suffix.lower()
+    
+    if file_extension == '.pdf':
+        return extract_text_from_pdf(file_path)
+    elif file_extension in ['.txt', '.text']:
+        return extract_text_from_txt(file_path)
+    elif file_extension in ['.html', '.htm']:
+        return extract_text_from_html(file_path)
+    elif file_extension == '.docx':
+        return extract_text_from_docx(file_path)
+    elif file_extension == '.doc':
+        raise ValueError(f"Legacy .doc files are not supported. Please convert {file_path.name} to .docx format.")
+    elif file_extension == '.rtf':
+        return extract_text_from_rtf(file_path)
+    else:
+        raise ValueError(f"Unsupported file type: {file_extension}")
+
+def get_supported_extensions():
+    """Return a list of supported file extensions."""
+    return ['.pdf', '.txt', '.text', '.html', '.htm', '.docx', '.rtf']
 
 def chunk_text(text: str, max_tokens: int, model: str = "gpt-4o-mini") -> list[str]:
     """Split text into chunks that fit within the token limit."""
@@ -87,7 +211,7 @@ def main():
     console = Console()
 
     parser = argparse.ArgumentParser(description="Process comments to determine attitudes.")
-    parser.add_argument("input_path", type=str, help="File containing JSON data with comments OR directory containing PDF files with comments.")
+    parser.add_argument("input_path", type=str, help="File containing JSON data with comments OR directory containing document files (PDF, TXT, HTML, DOCX, RTF) with comments.")
     parser.add_argument("--dry-run", action="store_true", help="If provided, only calculate total tokens without calling the OpenAI API.")
     parser.add_argument("--openai-api-key", type=str, default=None, help="OpenAI API key. If not set, must be set as environment variable.")
     parser.add_argument("--output-csv", type=str, default="results.csv", help="Output CSV file to store results.")
@@ -157,26 +281,35 @@ Examples:
             })
     
     elif input_path.is_dir():
-        # Handle PDF directory input (new functionality)
-        console.log("[info]Processing PDF directory input.")
-        pdf_files = list(input_path.glob("*.pdf"))
+        # Handle directory input with any supported file types
+        console.log("[info]Processing directory input.")
+        supported_extensions = get_supported_extensions()
         
-        if not pdf_files:
-            console.log(f"[red]Error: No PDF files found in {input_path}[/red]")
+        # Find all supported files in the directory
+        supported_files = []
+        for ext in supported_extensions:
+            supported_files.extend(input_path.glob(f"*{ext}"))
+        
+        if not supported_files:
+            console.log(f"[red]Error: No supported files found in {input_path}[/red]")
+            console.log(f"[red]Supported file types: {', '.join(supported_extensions)}[/red]")
             sys.exit(1)
         
-        for pdf_file in pdf_files:
-            # Extract comment ID from filename (remove .pdf extension)
-            comment_id = pdf_file.stem
+        console.log(f"[info]Found {len(supported_files)} supported files: {', '.join(supported_extensions)}[/info]")
+        
+        for file_path in supported_files:
+            # Extract comment ID from filename (remove extension)
+            comment_id = file_path.stem
             
             try:
-                comment_text = extract_text_from_pdf(pdf_file)
+                comment_text = extract_text_from_file(file_path)
                 data.append({
                     "comment_id": comment_id,
                     "comment": comment_text
                 })
+                console.log(f"[green]Successfully processed {file_path.name} ({file_path.suffix})[/green]")
             except Exception as e:
-                console.log(f"[yellow]Warning: Could not process {pdf_file}: {e}[/yellow]")
+                console.log(f"[yellow]Warning: Could not process {file_path}: {e}[/yellow]")
                 continue
     
     else:
