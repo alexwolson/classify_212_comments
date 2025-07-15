@@ -1,0 +1,7 @@
+# Core dependencies for classify.py script
+google-genai>=0.3.0  # Google Gemini API client for document classification
+rich>=13.0.0         # Enhanced console output and progress bars
+
+# Additional dependencies for demo.ipynb notebook
+pandas>=1.5.0        # Data manipulation and analysis for CSV handling
+matplotlib>=3.5.0    # Plotting library for data visualization
