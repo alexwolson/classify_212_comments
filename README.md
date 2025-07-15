@@ -1,18 +1,18 @@
-# Comment Classification Tool
+# Strong Mayor Powers Detection Tool
 
-This project provides a command-line tool to classify comments submitted in response to the Ontario Bill 212, the **Reducing Gridlock, Saving You Time Act, 2024**, which is informally known as the "bike lane bill." The script uses the OpenAI API to evaluate comments and return a machine-readable label indicating whether each comment is "for" or "against" the proposed legislation.
+This project provides a command-line tool to classify comments for the presence or absence of references to "Strong Mayor Powers" within public consultation documents. The script uses the OpenAI API to evaluate comments and return a machine-readable label indicating whether each comment contains references to Strong Mayor Powers concepts.
 
 ## Purpose
 
-Manually classifying these comments (i.e., determining whether each comment supports or opposes the bill) is both time-consuming and subject to human bias. This tool helps automate the classification process using a language model, thereby saving time and providing a consistent approach to analyzing public opinion.
+Strong Mayor Powers refer to enhanced mayoral authorities introduced in Ontario municipalities, including authority to override certain council decisions, enhanced control over municipal planning processes, and streamlined decision-making capabilities. This tool helps identify and analyze public discourse around these governance changes by automatically detecting references to Strong Mayor Powers in public comments and consultation responses.
 
 ## Methodology
 
-1. **Contextual Prompting**:  
-   Each comment is analyzed alongside a description of the bill. The model is instructed to read a given comment and determine if the commenter supports or opposes the changes outlined in Bill 212.
+1. **Contextual Analysis**:  
+   Each comment is analyzed to detect explicit or implicit references to Strong Mayor Powers, enhanced mayoral authorities, mayor override powers, or related municipal governance concepts.
 
 2. **Machine-Readable Results**:  
-   The model returns "for" if the comment supports the bill and "against" if the comment opposes it. This makes it easy to tally results or conduct further quantitative analysis.
+   The model returns "present" if the comment contains references to Strong Mayor Powers and "absent" if no such references are found. This makes it easy to tally results or conduct further quantitative analysis on public opinion regarding mayoral governance changes.
 
 3. **Token Counting (Dry Run)**:  
    Before running a full classification, you can use the `--dry-run` option to estimate the total token usage (and therefore costs) without making API calls.
@@ -103,11 +103,11 @@ When processing document files that contain more text than the model's context w
 
 **Example Runs:**
 ```bash
-# Process JSON file
+# Process JSON file to detect Strong Mayor Powers references
 python classify.py comments.json --openai-api-key YOUR_KEY --model gpt-4
 
 # Process document directory (supports PDF, TXT, HTML, DOCX, RTF)
-python classify.py ./document_comments --openai-api-key YOUR_KEY --output-csv document_results.csv
+python classify.py ./document_comments --openai-api-key YOUR_KEY --output-csv strong_mayor_results.csv
 
 # Dry run to estimate costs for document directory
 python classify.py ./document_comments --dry-run
@@ -118,10 +118,10 @@ A separate validation script, `validate.py`, is provided to help verify the accu
 ### How It Works
 
 1. **Random Sampling of Comments**:
-   The script reads all comments from the specified directory (in `.json` files) and looks up their corresponding stances from the `results.csv` file.
+   The script reads all comments from the specified directory (in `.json` files) and looks up their corresponding Strong Mayor Powers classifications from the `results.csv` file.
 
 2. **User Input**:
-   It then randomly selects a specified number of these comments and presents them, one by one, to the user via the command line. The user is asked to classify each comment as "for" or "against."
+   It then randomly selects a specified number of these comments and presents them, one by one, to the user via the command line. The user is asked to classify each comment as "present" or "absent" for Strong Mayor Powers references.
 
 3. **Comparison and Report**:
    Once the user has classified all the sampled comments, the script compares these user-provided classifications against the model's original predictions. It then reports a percentage agreement (i.e., how often the user and the model agreed).

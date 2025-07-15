@@ -186,7 +186,7 @@ def chunk_text(text: str, max_tokens: int, model: str = "gpt-4o-mini") -> list[s
 def get_majority_stance(stances: list[str]) -> str:
     """Get the majority stance from a list of classifications."""
     if not stances:
-        return "unclear"
+        return "absent"
     
     counter = Counter(stances)
     most_common = counter.most_common(1)[0]
@@ -197,20 +197,19 @@ def construct_full_prompt(comment_text: str, system_prompt: str) -> str:
 Comment:
 {comment_text}
 
-Based on the above comment and its context, determine the overall stance of the commenter regarding the described issue. Your response must always be one of the following:
+Based on the above comment, determine whether it contains any reference to Strong Mayor Powers (enhanced mayoral authorities in Ontario municipalities). Your response must be exactly one of the following:
 
-1. "for" - The comment clearly supports the legislation or its goals.
-2. "against" - The comment clearly opposes the legislation or its goals.
-3. "unclear" - Use only if the comment provides no clear indication of support or opposition, or discusses unrelated topics.
+1. "present" - The comment mentions Strong Mayor Powers, mayoral authorities, enhanced mayoral powers, or clearly discusses the concept.
+2. "absent" - The comment contains no reference to Strong Mayor Powers or related mayoral authority concepts.
 
-Return exactly one word: "for", "against", or "unclear". Do not include any additional explanation or text in your response.
+Return exactly one word: "present" or "absent". Do not include any additional explanation or text in your response.
 """
     return system_prompt.strip() + "\n" + user_prompt.strip()
 
 def main():
     console = Console()
 
-    parser = argparse.ArgumentParser(description="Process comments to determine attitudes.")
+    parser = argparse.ArgumentParser(description="Process comments to detect references to Strong Mayor Powers.")
     parser.add_argument("input_path", type=str, help="File containing JSON data with comments OR directory containing document files (PDF, TXT, HTML, DOCX, RTF) with comments.")
     parser.add_argument("--dry-run", action="store_true", help="If provided, only calculate total tokens without calling the OpenAI API.")
     parser.add_argument("--openai-api-key", type=str, default=None, help="OpenAI API key. If not set, must be set as environment variable.")
@@ -235,25 +234,29 @@ def main():
         sys.exit(1)
 
     system_prompt = """
-You are analyzing public comments submitted to the Environmental Registry of Ontario (ERO). The ERO is a platform where public feedback is collected on proposed Ontario legislation as part of the consultation process. Each comment corresponds to a specific ERO number, which identifies the related legislation.
+You are analyzing public comments submitted to the Environmental Registry of Ontario (ERO) and other public consultation platforms. Your task is to determine whether each comment contains references to "Strong Mayor Powers" and, if present, explain how they are referenced.
 
-Your task is to determine the **overall stance** of the commenter based on the content provided. The stance must always be exactly one of the following three options:
+**Background on Strong Mayor Powers:**
+Strong Mayor Powers refer to enhanced mayoral authorities introduced in Ontario municipalities. These powers typically include:
+- Authority to override certain council decisions with a simple majority vote
+- Enhanced control over municipal planning and development processes  
+- Greater influence over municipal budget priorities
+- Streamlined decision-making capabilities for municipal governance
+- Powers to hire and dismiss certain municipal staff directly
 
-1. "for" - The comment explicitly supports the legislation or its goals.
-2. "against" - The comment explicitly opposes the legislation or its goals.
-3. "unclear" - Use this only if the comment provides no clear indication of support or opposition, or discusses unrelated topics.
+Strong Mayor Powers became relevant in Ontario as a way to expedite municipal decision-making, particularly for housing development and infrastructure projects, and were implemented in various Ontario municipalities starting in 2022.
+
+**Your Classification Task:**
+Determine if the comment contains any reference to Strong Mayor Powers and classify as one of:
+
+1. "present" - The comment explicitly mentions Strong Mayor Powers, mayoral authorities, enhanced mayoral powers, mayor override powers, or clearly discusses the concept even if not using the exact term.
+2. "absent" - The comment contains no reference to Strong Mayor Powers or related mayoral authority concepts.
 
 **Guidelines**:
-- Always return a single word: "for," "against," or "unclear." Do not include explanations or additional text in your response.
-- Remain impartial and base your classification solely on the content of the comment. Do not infer intent beyond what is explicitly stated.
-- If a comment is vague, incomplete, or references unrelated topics, mark it as "unclear."
-- When a comment addresses multiple aspects of the legislation, base your decision on the dominant sentiment. If no dominant sentiment is apparent, choose "unclear."
-- Consider spelling errors, informal language, or grammatical issues as part of normal analysis and do not discount these comments unless they are incomprehensible.
-
-Examples:
-- Comment: "I fully agree with these changes to reduce traffic delays." → **for**
-- Comment: "This legislation will harm small businesses." → **against**
-- Comment: "I don't understand this proposal." → **unclear**
+- Look for direct mentions of "Strong Mayor Powers," "mayoral powers," "mayor override," or similar terminology
+- Also identify indirect references that clearly discuss enhanced mayoral authorities or municipal governance changes involving mayors
+- Return exactly one word: "present" or "absent"
+- Do not include explanations in your response
 """
 
     # Load already processed comments if output file exists
@@ -326,7 +329,7 @@ Examples:
     with open(output_file, "a", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         if not output_file.is_file() or output_file.stat().st_size == 0:
-            writer.writerow(["Comment ID", "Stance"])
+            writer.writerow(["Comment ID", "Strong Mayor Powers"])
 
         with Progress(console=console) as progress:
             task = progress.add_task("Processing comments...", total=total_comments)
@@ -372,11 +375,11 @@ Examples:
                             )
 
                             answer = response.choices[0].message.content.strip().lower()
-                            match = re.search(r"\b(for|against|unclear)\b", answer)
+                            match = re.search(r"\b(present|absent)\b", answer)
                             if match:
                                 chunk_stance = match.group(1)
                             else:
-                                chunk_stance = "unclear"
+                                chunk_stance = "absent"
                                 console.log(f"[yellow]Warning: Unexpected response for comment {comment_id} chunk {i+1}: {answer}[/yellow]")
                             
                             chunk_stances.append(chunk_stance)
@@ -403,11 +406,11 @@ Examples:
                         )
 
                         answer = response.choices[0].message.content.strip().lower()
-                        match = re.search(r"\b(for|against|unclear)\b", answer)
+                        match = re.search(r"\b(present|absent)\b", answer)
                         if match:
                             result = match.group(1)
                         else:
-                            result = "unclear"
+                            result = "absent"
                             console.log(f"[yellow]Warning: Unexpected response for comment {comment_id}: {answer}[/yellow]")
                     else:
                         result = "(dry-run)"
