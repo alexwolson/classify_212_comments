@@ -23,6 +23,7 @@ Manually classifying these comments (i.e., determining whether each comment supp
 - `openai` Python library (version 1.0.0+)
 - `tiktoken` for token counting
 - `rich` for enhanced console output
+- `pdfplumber` for PDF text extraction (new)
 - A valid OpenAI API key
 
 ## Installation
@@ -35,7 +36,7 @@ Manually classifying these comments (i.e., determining whether each comment supp
    
 2. **Install required packages**:
     ```bash
-    pip install openai tiktoken rich
+    pip install openai tiktoken rich pdfplumber
     ```
 
 3. **Set the OpenAI API key**:
@@ -49,33 +50,58 @@ Manually classifying these comments (i.e., determining whether each comment supp
 
 **Command:**
 ```bash
-python classify.py [directory] [options]
+python classify.py [input_path] [options]
 ```
 
 **Arguments:**
-- **directory** (required): The path to a directory containing `.json` files with comments. Each file should have a structure like:
+- **input_path** (required): Either:
+  - A JSON file containing comments in the format described below, OR
+  - A directory containing PDF files (each PDF represents one comment)
+
+**Input Formats:**
+
+1. **JSON File Format**: Each file should have a structure like:
     ```json
-    {
-      "103658": {
-        "url": "/comment/103658",
+    [
+      {
+        "comment_id": "103658",
         "comment": "I believe removing bike lanes is a terrible idea..."
       },
-      "103661": {
-        "url": "/comment/103661",
+      {
+        "comment_id": "103661", 
         "comment": "This bill will help build highways faster and reduce congestion..."
       }
-    }
+    ]
     ```
+
+2. **PDF Directory Format**: A directory containing PDF files where:
+   - Each PDF file contains the text of one comment
+   - The filename (without .pdf extension) is used as the comment ID
+   - Text is automatically extracted from the PDF
 
 **Optional Arguments:**
 - `--dry-run`: Estimate token usage without making OpenAI API calls.
 - `--openai-api-key`: Provide the API key directly. If not set, the script uses the `OPENAI_API_KEY` environment variable.
 - `--output-csv`: Specify the output CSV file name. Default is `results.csv`.
 - `--model`: Specify the model name. Default is `gpt-4o-mini`. Adjust this to a model you have access to, such as `gpt-4`.
+- `--max-tokens`: Maximum tokens per request for chunking large PDFs. Default is 120,000 tokens.
 
-**Example Run:**
+**Large PDF Handling:**
+When processing PDF files that contain more text than the model's context window can handle, the script automatically:
+1. Chunks the text into smaller pieces that fit within the token limit
+2. Processes each chunk separately to get individual classifications
+3. Uses majority voting to determine the final stance for the entire comment
+
+**Example Runs:**
 ```bash
-python classify.py ./comment_data --openai-api-key YOUR_KEY --model gpt-4 --output-csv my_results.csv
+# Process JSON file
+python classify.py comments.json --openai-api-key YOUR_KEY --model gpt-4
+
+# Process PDF directory
+python classify.py ./pdf_comments --openai-api-key YOUR_KEY --output-csv pdf_results.csv
+
+# Dry run to estimate costs
+python classify.py ./pdf_comments --dry-run
 ```
 
 A separate validation script, `validate.py`, is provided to help verify the accuracy of the model's classifications. This script allows a human reviewer to randomly sample a set of comments and provide their own "for" or "against" judgments, then compare these judgments against the model’s predictions to measure agreement.
